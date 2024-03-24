@@ -15,9 +15,10 @@ import { AxisBottom, AxisLeft } from '@visx/axis';
 import { Zoom } from '@visx/zoom';
 import { RectClipPath } from '@visx/clip-path';
 import { TransformMatrix } from '@visx/zoom/lib/types';
+import { ScaleLinear, ScaleTime } from '@visx/vendor/d3-scale';
 
 // dataset
-const data = appleStock.slice(0, 340);
+const data = appleStock.slice(appleStock.length - 340);
 
 // tooltip
 // const tooltipStyles: React.CSSProperties = {
@@ -118,55 +119,50 @@ const AreaTest = ({
     [innerHeight, margin.top]
   );
 
-  // const [scales, setScales] = useState(() => {
-  //   const xScale = scaleTime({
-  //     range: [margin.left, innerWidth + margin.left],
-  //     domain: extent(data, getXValue) as [Date, Date],
-  //   });
+  const xZoomScale = useCallback(
+    (
+      zoomTranslateX: number,
+      zoomScaleX: number
+    ): ScaleTime<number, number, never> => {
+      const newDomainX = xScale.range().map((r) => {
+        return xScale.invert((r - zoomTranslateX) / zoomScaleX);
+      });
+      return xScale.copy().domain(newDomainX);
+    },
+    [xScale]
+  );
 
-  //   const yScale = scaleLinear({
-  //     range: [margin.top + innerHeight, margin.top],
-  //     domain: [0, Math.max(...data.map(getYValue)) + innerHeight / 10],
-  //   });
-
-  //   return { xScale, yScale };
-  // });
-
-  // console.log(scales);
-
-  // const rescaleAxis = (
-  //   scales: {
-  //     xScale: ScaleTime<number, number, never>;
-  //     yScale: ScaleLinear<number, number, never>;
-  //   },
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   zoom: any
-  // ): void => {
-  //   const newDomainX = scales.xScale.range().map((r) => {
-  //     return scales.xScale.invert(
-  //       (r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX
-  //     );
-  //   });
-  //   const newDomainY = scales.yScale.range().map((r) => {
-  //     return scales.yScale.invert(
-  //       (r - zoom.transformMatrix.translateY) / zoom.transformMatrix.scaleY
-  //     );
-  //   });
-
-  //   const xScale = scales.xScale.copy().domain(newDomainX);
-  //   const yScale = scales.yScale.copy().domain(newDomainY);
-
-  //   setScales({ xScale, yScale });
-  // };
+  const yZoomScale = useCallback(
+    (
+      zoomTranslateY: number,
+      zoomScaleY: number
+    ): ScaleLinear<number, number, never> => {
+      const newDomainY = yScale.range().map((r) => {
+        return yScale.invert((r - zoomTranslateY) / zoomScaleY);
+      });
+      return yScale.copy().domain(newDomainY);
+    },
+    [yScale]
+  );
 
   // tooltip handler
   const lastEventType = useRef('');
   const handleTooltip = useCallback(
     (
-      event: React.TouchEvent<SVGRectElement> | React.MouseEvent<SVGRectElement>
+      event:
+        | React.TouchEvent<SVGRectElement>
+        | React.MouseEvent<SVGRectElement>,
+      transformMatrix: TransformMatrix
     ) => {
       const { x, y } = localPoint(event) || { x: 0, y: 0 };
-      const x0 = xScale.invert(x);
+      // const zoomY = y - transformMatrix.translateY / transformMatrix.scaleY;
+      const x0 =
+        transformMatrix.scaleX === 1 && transformMatrix.translateX === 0
+          ? xScale.invert(x)
+          : xZoomScale(
+              transformMatrix.translateX,
+              transformMatrix.scaleX
+            ).invert(x);
       const index = bisect(data, x0, 1);
       const d0 = data[index - 1];
       const d1 = data[index];
@@ -180,7 +176,13 @@ const AreaTest = ({
             : d0;
       }
 
-      const tooltipTop = yScale(getYValue(d));
+      const tooltipTop =
+        transformMatrix.scaleY === 1 && transformMatrix.translateY === 0
+          ? yScale(getYValue(d))
+          : yZoomScale(
+              transformMatrix.translateY,
+              transformMatrix.scaleY
+            )(getYValue(d));
       const toleranceArea = innerHeight * 0.05;
       if (
         event.type === 'mousemove' &&
@@ -210,7 +212,7 @@ const AreaTest = ({
         lastEventType.current = event.type;
       }
     },
-    [innerHeight, xScale, yScale]
+    [innerHeight, xScale, yScale, xZoomScale, yZoomScale]
   );
 
   function constrain(
@@ -238,7 +240,7 @@ const AreaTest = ({
         )
       ),
       translateY: Math.min(
-        0,
+        margin.top,
         Math.max(
           innerHeight - innerHeight * transformMatrix.scaleY,
           transformMatrix.translateY
@@ -283,124 +285,144 @@ const AreaTest = ({
             initialTransformMatrix={initialTransform}
           >
             {(zoom) => {
+              console.log(zoom.transformMatrix);
+
               return (
-                // <div style={{ position: 'relative' }}>
-                <g
-                  width={innerWidth}
-                  height={innerHeight}
-                  ref={zoom.containerRef}
-                  style={{
-                    position: 'relative',
-                    cursor: zoom.isDragging ? 'grabbing' : 'grab',
-                    touchAction: 'none',
-                    clipPath: 'url(#zoom-clip)',
-                  }}
-                >
-                  <GridRows
-                    left={margin.left}
-                    scale={yScale}
+                <>
+                  <g
                     width={innerWidth}
-                    strokeDasharray="1,3"
-                    stroke="#aaa"
-                    strokeOpacity={0.2}
-                    pointerEvents="none"
-                    numTicks={8}
-                  />
-                  <g transform={zoom.toString()}>
-                    <AreaClosed<AppleStock>
-                      data={data}
-                      x={(d) => xScale(getXValue(d)) ?? 0}
-                      y={(d) => yScale(getYValue(d)) ?? 0}
-                      yScale={yScale}
-                      strokeWidth={1}
-                      stroke="#url(#area-accent-gradient)"
-                      fill="url(#area-accent-gradient)"
-                      curve={curveMonotoneX}
-                    />
-                    <LinePath
-                      data={data}
-                      x={(d) => xScale(getXValue(d)) ?? 0}
-                      y={(d) => yScale(getYValue(d)) ?? 0}
-                      strokeWidth={
-                        zoom.transformMatrix.scaleX > 2.5
-                          ? 0.5
-                          : zoom.transformMatrix.scaleX > 1.5
-                          ? 1
-                          : 2
-                      }
-                      stroke="#01b3f9"
-                      curve={curveMonotoneX}
-                    />
-                    <Bar
-                      x={margin.left}
-                      y={margin.top}
+                    height={innerHeight}
+                    ref={zoom.containerRef}
+                    style={{
+                      position: 'relative',
+                      cursor:
+                        zoom.transformMatrix.scaleX === 1
+                          ? 'inherit'
+                          : zoom.isDragging
+                          ? 'grabbing'
+                          : 'grab',
+                      touchAction: 'none',
+                      clipPath: 'url(#zoom-clip)',
+                    }}
+                  >
+                    <GridRows
+                      left={margin.left}
+                      scale={yScale}
                       width={innerWidth}
-                      height={innerHeight}
-                      fill="transparent"
-                      rx={24}
-                      onTouchStart={handleTooltip}
-                      onTouchMove={handleTooltip}
-                      onMouseMove={handleTooltip}
-                      onMouseLeave={() => hideTooltipRef.current()}
+                      strokeDasharray="1,3"
+                      stroke="#aaa"
+                      strokeOpacity={0.2}
+                      pointerEvents="none"
+                      numTicks={8}
                     />
+                    <g transform={zoom.toString()}>
+                      <AreaClosed<AppleStock>
+                        data={data}
+                        x={(d) => xScale(getXValue(d)) ?? 0}
+                        y={(d) => yScale(getYValue(d)) ?? 0}
+                        yScale={yScale}
+                        strokeWidth={1}
+                        stroke="#url(#area-accent-gradient)"
+                        fill="url(#area-accent-gradient)"
+                        curve={curveMonotoneX}
+                      />
+                      <LinePath
+                        data={data}
+                        x={(d) => xScale(getXValue(d)) ?? 0}
+                        y={(d) => yScale(getYValue(d)) ?? 0}
+                        strokeWidth={
+                          zoom.transformMatrix.scaleX > 2.5
+                            ? 0.5
+                            : zoom.transformMatrix.scaleX > 1.5
+                            ? 1
+                            : 2
+                        }
+                        stroke="#01b3f9"
+                        curve={curveMonotoneX}
+                      />
+                      <Bar
+                        x={margin.left}
+                        y={margin.top}
+                        width={innerWidth}
+                        height={innerHeight}
+                        fill="transparent"
+                        rx={24}
+                        onTouchStart={(event) =>
+                          handleTooltip(event, zoom.transformMatrix)
+                        }
+                        onTouchMove={(event) =>
+                          handleTooltip(event, zoom.transformMatrix)
+                        }
+                        onMouseMove={(event) =>
+                          handleTooltip(event, zoom.transformMatrix)
+                        }
+                        onMouseLeave={() => hideTooltipRef.current()}
+                        onWheel={() => hideTooltip()}
+                      />
+                    </g>
                   </g>
-                </g>
-                // </div>
+                  <Group>
+                    <AxisBottom
+                      top={innerHeight + margin.top}
+                      scale={xZoomScale(
+                        zoom.transformMatrix.translateX,
+                        zoom.transformMatrix.scaleX
+                      )}
+                      tickFormat={(date) => {
+                        if (date instanceof Date) {
+                          return formatDateAxis(date);
+                        }
+                      }}
+                      stroke={axisColor}
+                      tickStroke={axisColor}
+                      tickLabelProps={axisBottomTickLabelProps}
+                      numTicks={width < 600 ? 5 : 10}
+                    />
+                  </Group>
+                  <Group>
+                    <AxisLeft
+                      left={margin.left}
+                      scale={yZoomScale(
+                        zoom.transformMatrix.translateY,
+                        zoom.transformMatrix.scaleY
+                      )}
+                      numTicks={8}
+                      stroke={axisColor}
+                      tickStroke={axisColor}
+                      tickLabelProps={axisLeftTickLabelProps}
+                    />
+                  </Group>
+                  {tooltipData && (
+                    <Group>
+                      <Line
+                        from={{ x: tooltipLeft, y: margin.top }}
+                        to={{ x: tooltipLeft, y: innerHeight + margin.top }}
+                        stroke="#44aad6"
+                        strokeWidth={1}
+                        strokeDasharray="5,2"
+                        pointerEvents="none"
+                      />
+                      <circle
+                        cx={tooltipLeft}
+                        cy={tooltipTop}
+                        r={6}
+                        fill="#fff"
+                        pointerEvents="none"
+                      />
+                      <circle
+                        cx={tooltipLeft}
+                        cy={tooltipTop}
+                        r={4}
+                        fill="#2b6cb1"
+                        pointerEvents="none"
+                      />
+                    </Group>
+                  )}
+                </>
               );
             }}
           </Zoom>
         </Group>
-        <Group>
-          <AxisBottom
-            top={innerHeight + margin.top}
-            scale={xScale}
-            tickFormat={(date) => {
-              if (date instanceof Date) {
-                return formatDateAxis(date);
-              }
-            }}
-            stroke={axisColor}
-            tickStroke={axisColor}
-            tickLabelProps={axisBottomTickLabelProps}
-            numTicks={width < 600 ? 5 : 16}
-          />
-        </Group>
-        <Group>
-          <AxisLeft
-            left={margin.left}
-            scale={yScale}
-            numTicks={8}
-            stroke={axisColor}
-            tickStroke={axisColor}
-            tickLabelProps={axisLeftTickLabelProps}
-          />
-        </Group>
-        {tooltipData && (
-          <Group>
-            <Line
-              from={{ x: tooltipLeft, y: margin.top }}
-              to={{ x: tooltipLeft, y: innerHeight + margin.top }}
-              stroke="#44aad6"
-              strokeWidth={1}
-              strokeDasharray="5,2"
-              pointerEvents="none"
-            />
-            <circle
-              cx={tooltipLeft}
-              cy={tooltipTop}
-              r={6}
-              fill="#fff"
-              pointerEvents="none"
-            />
-            <circle
-              cx={tooltipLeft}
-              cy={tooltipTop}
-              r={4}
-              fill="#2b6cb1"
-              pointerEvents="none"
-            />
-          </Group>
-        )}
       </svg>
       {tooltipData && (
         <TooltipWithBounds
