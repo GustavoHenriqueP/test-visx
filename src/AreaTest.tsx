@@ -12,6 +12,9 @@ import { AreaClosed, Bar, Line, LinePath } from '@visx/shape';
 import { curveMonotoneX } from '@visx/curve';
 import { Group } from '@visx/group';
 import { AxisBottom, AxisLeft } from '@visx/axis';
+import { Zoom } from '@visx/zoom';
+import { RectClipPath } from '@visx/clip-path';
+import { TransformMatrix } from '@visx/zoom/lib/types';
 
 // dataset
 const data = appleStock.slice(0, 340);
@@ -58,6 +61,15 @@ const getXValue = (d: AppleStock) => new Date(d.date);
 const getYValue = (d: AppleStock) => d.close;
 const bisect = bisector<AppleStock, Date>((d) => new Date(d.date)).left;
 
+const initialTransform = {
+  scaleX: 1,
+  scaleY: 1,
+  translateX: 0,
+  translateY: 0,
+  skewX: 0,
+  skewY: 0,
+};
+
 export type AreaProps = {
   width: number;
   height: number;
@@ -88,7 +100,6 @@ const AreaTest = ({
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
-  // scales
   const xScale = useMemo(
     () =>
       scaleTime({
@@ -106,6 +117,47 @@ const AreaTest = ({
       }),
     [innerHeight, margin.top]
   );
+
+  // const [scales, setScales] = useState(() => {
+  //   const xScale = scaleTime({
+  //     range: [margin.left, innerWidth + margin.left],
+  //     domain: extent(data, getXValue) as [Date, Date],
+  //   });
+
+  //   const yScale = scaleLinear({
+  //     range: [margin.top + innerHeight, margin.top],
+  //     domain: [0, Math.max(...data.map(getYValue)) + innerHeight / 10],
+  //   });
+
+  //   return { xScale, yScale };
+  // });
+
+  // console.log(scales);
+
+  // const rescaleAxis = (
+  //   scales: {
+  //     xScale: ScaleTime<number, number, never>;
+  //     yScale: ScaleLinear<number, number, never>;
+  //   },
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   zoom: any
+  // ): void => {
+  //   const newDomainX = scales.xScale.range().map((r) => {
+  //     return scales.xScale.invert(
+  //       (r - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX
+  //     );
+  //   });
+  //   const newDomainY = scales.yScale.range().map((r) => {
+  //     return scales.yScale.invert(
+  //       (r - zoom.transformMatrix.translateY) / zoom.transformMatrix.scaleY
+  //     );
+  //   });
+
+  //   const xScale = scales.xScale.copy().domain(newDomainX);
+  //   const yScale = scales.yScale.copy().domain(newDomainY);
+
+  //   setScales({ xScale, yScale });
+  // };
 
   // tooltip handler
   const lastEventType = useRef('');
@@ -136,7 +188,6 @@ const AreaTest = ({
       ) {
         if (y >= tooltipTop - toleranceArea && y < tooltipTop + toleranceArea) {
           event.currentTarget.style.cursor = 'pointer';
-          console.log(event.type);
 
           showTooltipRef.current({
             tooltipData: d,
@@ -144,7 +195,7 @@ const AreaTest = ({
             tooltipTop: tooltipTop,
           });
         } else {
-          event.currentTarget.style.cursor = 'initial';
+          event.currentTarget.style.cursor = 'inherit';
           hideTooltipRef.current();
         }
 
@@ -161,6 +212,40 @@ const AreaTest = ({
     },
     [innerHeight, xScale, yScale]
   );
+
+  function constrain(
+    transformMatrix: TransformMatrix,
+    prevTransformMatrix: TransformMatrix
+  ) {
+    if (transformMatrix.scaleX <= 1) {
+      return initialTransform;
+    }
+    if (transformMatrix.scaleX > 4) {
+      return prevTransformMatrix;
+    }
+
+    console.log(innerWidth - innerWidth * transformMatrix.scaleX);
+    console.log(width - width * transformMatrix.scaleX);
+    console.log(transformMatrix.translateX);
+    // clamp translate so that the chart doesn't move inward when zooming out near edges
+    return {
+      ...transformMatrix,
+      translateX: Math.min(
+        0,
+        Math.max(
+          width - width * transformMatrix.scaleX,
+          transformMatrix.translateX
+        )
+      ),
+      translateY: Math.min(
+        0,
+        Math.max(
+          innerHeight - innerHeight * transformMatrix.scaleY,
+          transformMatrix.translateY
+        )
+      ),
+    };
+  }
 
   // Prevenir erro com o primeiro render sendo width e height de 0
   if (width < 100) return null;
@@ -184,46 +269,86 @@ const AreaTest = ({
           toOpacity={0.2}
         />
         <Group>
-          <GridRows
-            left={margin.left}
-            scale={yScale}
-            width={innerWidth}
-            strokeDasharray="1,3"
-            stroke="#aaa"
-            strokeOpacity={0.2}
-            pointerEvents="none"
-            numTicks={8}
-          />
-          <AreaClosed<AppleStock>
-            data={data}
-            x={(d) => xScale(getXValue(d)) ?? 0}
-            y={(d) => yScale(getYValue(d)) ?? 0}
-            yScale={yScale}
-            strokeWidth={1}
-            stroke="#url(#area-accent-gradient)"
-            fill="url(#area-accent-gradient)"
-            curve={curveMonotoneX}
-          />
-          <LinePath
-            data={data}
-            x={(d) => xScale(getXValue(d)) ?? 0}
-            y={(d) => yScale(getYValue(d)) ?? 0}
-            strokeWidth={2}
-            stroke="#01b3f9"
-            curve={curveMonotoneX}
-          />
-          <Bar
+          <RectClipPath
+            id="zoom-clip"
             x={margin.left}
             y={margin.top}
             width={innerWidth}
             height={innerHeight}
-            fill="transparent"
-            rx={24}
-            onTouchStart={handleTooltip}
-            onTouchMove={handleTooltip}
-            onMouseMove={handleTooltip}
-            onMouseLeave={() => hideTooltipRef.current()}
           />
+          <Zoom<SVGSVGElement>
+            width={innerWidth}
+            height={innerHeight}
+            constrain={constrain}
+            initialTransformMatrix={initialTransform}
+          >
+            {(zoom) => {
+              return (
+                // <div style={{ position: 'relative' }}>
+                <g
+                  width={innerWidth}
+                  height={innerHeight}
+                  ref={zoom.containerRef}
+                  style={{
+                    position: 'relative',
+                    cursor: zoom.isDragging ? 'grabbing' : 'grab',
+                    touchAction: 'none',
+                    clipPath: 'url(#zoom-clip)',
+                  }}
+                >
+                  <GridRows
+                    left={margin.left}
+                    scale={yScale}
+                    width={innerWidth}
+                    strokeDasharray="1,3"
+                    stroke="#aaa"
+                    strokeOpacity={0.2}
+                    pointerEvents="none"
+                    numTicks={8}
+                  />
+                  <g transform={zoom.toString()}>
+                    <AreaClosed<AppleStock>
+                      data={data}
+                      x={(d) => xScale(getXValue(d)) ?? 0}
+                      y={(d) => yScale(getYValue(d)) ?? 0}
+                      yScale={yScale}
+                      strokeWidth={1}
+                      stroke="#url(#area-accent-gradient)"
+                      fill="url(#area-accent-gradient)"
+                      curve={curveMonotoneX}
+                    />
+                    <LinePath
+                      data={data}
+                      x={(d) => xScale(getXValue(d)) ?? 0}
+                      y={(d) => yScale(getYValue(d)) ?? 0}
+                      strokeWidth={
+                        zoom.transformMatrix.scaleX > 2.5
+                          ? 0.5
+                          : zoom.transformMatrix.scaleX > 1.5
+                          ? 1
+                          : 2
+                      }
+                      stroke="#01b3f9"
+                      curve={curveMonotoneX}
+                    />
+                    <Bar
+                      x={margin.left}
+                      y={margin.top}
+                      width={innerWidth}
+                      height={innerHeight}
+                      fill="transparent"
+                      rx={24}
+                      onTouchStart={handleTooltip}
+                      onTouchMove={handleTooltip}
+                      onMouseMove={handleTooltip}
+                      onMouseLeave={() => hideTooltipRef.current()}
+                    />
+                  </g>
+                </g>
+                // </div>
+              );
+            }}
+          </Zoom>
         </Group>
         <Group>
           <AxisBottom
