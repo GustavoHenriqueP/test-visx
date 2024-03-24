@@ -155,7 +155,6 @@ const AreaTest = ({
       transformMatrix: TransformMatrix
     ) => {
       const { x, y } = localPoint(event) || { x: 0, y: 0 };
-      // const zoomY = y - transformMatrix.translateY / transformMatrix.scaleY;
       const x0 =
         transformMatrix.scaleX === 1 && transformMatrix.translateX === 0
           ? xScale.invert(x)
@@ -209,6 +208,8 @@ const AreaTest = ({
           tooltipTop: tooltipTop,
         });
 
+        console.log(d);
+
         lastEventType.current = event.type;
       }
     },
@@ -226,9 +227,9 @@ const AreaTest = ({
       return prevTransformMatrix;
     }
 
-    console.log(innerWidth - innerWidth * transformMatrix.scaleX);
-    console.log(width - width * transformMatrix.scaleX);
-    console.log(transformMatrix.translateX);
+    // console.log(innerWidth - innerWidth * transformMatrix.scaleX);
+    // console.log(width - width * transformMatrix.scaleX);
+    // console.log(transformMatrix.translateX);
     // clamp translate so that the chart doesn't move inward when zooming out near edges
     return {
       ...transformMatrix,
@@ -285,7 +286,7 @@ const AreaTest = ({
             initialTransformMatrix={initialTransform}
           >
             {(zoom) => {
-              console.log(zoom.transformMatrix);
+              // console.log(zoom.transformMatrix);
 
               return (
                 <>
