@@ -25,10 +25,14 @@ body,
 }
 
 .main-chart {
-  width: 800px;
+  width: 1200px;
   min-width: 300px;
   height: 500px;
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 8px 16px #222222;
+}
+
+.animate-path {
+  transition: all 0.3s;
 }

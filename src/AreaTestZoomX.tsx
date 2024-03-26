@@ -15,12 +15,12 @@ import { AxisBottom, AxisLeft } from '@visx/axis';
 import { Zoom } from '@visx/zoom';
 import { RectClipPath } from '@visx/clip-path';
 import { TransformMatrix } from '@visx/zoom/lib/types';
-import { ScaleLinear, ScaleTime } from '@visx/vendor/d3-scale';
+import { ScaleTime } from '@visx/vendor/d3-scale';
 import TickDateLabel from './TickDateLabel';
 
 // dataset
 type LevelChart = [number, number];
-// const data = JSON.parse();
+// const data = appleStock.slice(appleStock.length - 80);
 
 // styles
 const tooltipStyles: React.CSSProperties = {
@@ -98,12 +98,8 @@ const AreaTest = ({
   useEffect(() => {
     async function getData() {
       const response = await fetch('/src/mock-data.json');
-      console.log(response);
-
       const objData = await response.json();
       const plot = objData.data.plot[0];
-      console.log(plot);
-
       setData(plot);
     }
 
@@ -141,19 +137,6 @@ const AreaTest = ({
     [xScale]
   );
 
-  const yZoomScale = useCallback(
-    ({
-      translateY,
-      scaleY,
-    }: TransformMatrix): ScaleLinear<number, number, never> => {
-      const newDomainY = yScale.range().map((r) => {
-        return yScale.invert((r - translateY) / scaleY);
-      });
-      return yScale.copy().domain(newDomainY);
-    },
-    [yScale]
-  );
-
   // tooltip handler
   const lastEventType = useRef('');
   const handleTooltip = useCallback(
@@ -179,7 +162,7 @@ const AreaTest = ({
       }
 
       const tooltipLeft = xZoomScale(transformMatrix)(getXValue(d));
-      const tooltipTop = yZoomScale(transformMatrix)(getYValue(d));
+      const tooltipTop = yScale(getYValue(d));
       const toleranceArea = innerHeight * 0.05;
       if (
         event.type === 'mousemove' &&
@@ -218,15 +201,7 @@ const AreaTest = ({
         lastEventType.current = event.type;
       }
     },
-    [
-      margin.top,
-      margin.left,
-      innerWidth,
-      innerHeight,
-      xZoomScale,
-      yZoomScale,
-      data,
-    ]
+    [margin.top, margin.left, innerWidth, innerHeight, xZoomScale, yScale, data]
   );
 
   function constrain(
@@ -253,13 +228,8 @@ const AreaTest = ({
           transformMatrix.translateX
         )
       ),
-      translateY: Math.min(
-        margin.top,
-        Math.max(
-          innerHeight - innerHeight * transformMatrix.scaleY,
-          transformMatrix.translateY
-        )
-      ),
+      // To work only x axis
+      translateY: 0,
     };
   }
 
@@ -297,25 +267,26 @@ const AreaTest = ({
             height={innerHeight}
             constrain={constrain}
             initialTransformMatrix={initialTransform}
+            // To scale only in X Axis or control the speed of scaling,
+            // is necessary handle manually the zoom
+            // with the onWheelEvent and scaling only scaleX
             wheelDelta={(event) => {
               hideTooltip();
 
               if (event.deltaY > 0) {
                 return {
                   scaleX: 0.8,
-                  scaleY: 0.8,
+                  scaleY: 1,
                 };
               } else {
                 return {
                   scaleX: 1.2,
-                  scaleY: 1.2,
+                  scaleY: 1,
                 };
               }
             }}
           >
             {(zoom) => {
-              console.log(zoom.transformMatrix);
-
               return (
                 <>
                   <g
@@ -336,7 +307,7 @@ const AreaTest = ({
                   >
                     <GridRows
                       left={margin.left}
-                      scale={yZoomScale(zoom.transformMatrix)}
+                      scale={yScale}
                       width={innerWidth}
                       strokeDasharray="1,3"
                       stroke="#aaa"
@@ -350,7 +321,7 @@ const AreaTest = ({
                         x={(d) => xScale(getXValue(d)) ?? 0}
                         y={(d) => yScale(getYValue(d)) ?? 0}
                         yScale={yScale}
-                        strokeWidth={1}
+                        strokeWidth={0}
                         stroke="#url(#area-accent-gradient)"
                         fill="url(#area-accent-gradient)"
                         curve={curveMonotoneX}
@@ -359,17 +330,7 @@ const AreaTest = ({
                         data={data}
                         x={(d) => xScale(getXValue(d)) ?? 0}
                         y={(d) => yScale(getYValue(d)) ?? 0}
-                        strokeWidth={
-                          zoom.transformMatrix.scaleX > 3
-                            ? 0.25
-                            : zoom.transformMatrix.scaleX > 2.5
-                            ? 0.5
-                            : zoom.transformMatrix.scaleX > 2
-                            ? 1
-                            : zoom.transformMatrix.scaleX > 1.5
-                            ? 1.5
-                            : 2
-                        }
+                        strokeWidth={zoom.transformMatrix.scaleX > 1.5 ? 1 : 2}
                         stroke="#01b3f9"
                         curve={curveMonotoneX}
                       />
@@ -394,7 +355,7 @@ const AreaTest = ({
                           const point = localPoint(event) || { x: 0, y: 0 };
 
                           areaRef.current?.classList.add('animate-path');
-                          zoom.scale({ scaleX: 3, scaleY: 3, point });
+                          zoom.scale({ scaleX: 3, scaleY: 1, point });
                           setTimeout(() => {
                             areaRef.current?.classList.remove('animate-path');
                           }, 300);
@@ -421,7 +382,7 @@ const AreaTest = ({
                   <Group>
                     <AxisLeft
                       left={margin.left}
-                      scale={yZoomScale(zoom.transformMatrix)}
+                      scale={yScale}
                       numTicks={8}
                       stroke={axisColor}
                       tickStroke={axisColor}
