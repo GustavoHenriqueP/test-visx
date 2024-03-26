@@ -14,7 +14,7 @@ import { Group } from '@visx/group';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { Zoom } from '@visx/zoom';
 import { RectClipPath } from '@visx/clip-path';
-import { TransformMatrix } from '@visx/zoom/lib/types';
+import { Scale, TransformMatrix } from '@visx/zoom/lib/types';
 import { ScaleTime } from '@visx/vendor/d3-scale';
 import TickDateLabel from './TickDateLabel';
 
@@ -35,11 +35,11 @@ const tooltipStyles: React.CSSProperties = {
 
 const axisColor = '#ddd';
 const axisBottomTickLabelProps = {
-  fontSize: 10,
+  fontSize: 12,
   fill: axisColor,
 };
 const axisLeftTickLabelProps = {
-  fontSize: 10,
+  fontSize: 12,
   fill: axisColor,
   dx: '-0.5em',
   dy: '0.25em',
@@ -196,8 +196,6 @@ const AreaTest = ({
           tooltipTop: tooltipTop,
         });
 
-        console.log(d);
-
         lastEventType.current = event.type;
       }
     },
@@ -233,6 +231,24 @@ const AreaTest = ({
     };
   }
 
+  function handleZoomDelta(
+    event: WheelEvent | React.WheelEvent<Element>
+  ): Scale {
+    hideTooltip();
+
+    if (event.deltaY > 0) {
+      return {
+        scaleX: 0.6,
+        scaleY: 1,
+      };
+    } else {
+      return {
+        scaleX: 1.4,
+        scaleY: 1,
+      };
+    }
+  }
+
   // Prevenir erro com o primeiro render sendo width e height de 0
   if (width < 100) return null;
   return (
@@ -243,7 +259,7 @@ const AreaTest = ({
           y={0}
           width={width}
           height={height}
-          rx={24}
+          rx={12}
           fill="url(#area-bg-gradient)"
         />
         <LinearGradient id="area-bg-gradient" from="#3d4046" to="#363940" />
@@ -269,22 +285,8 @@ const AreaTest = ({
             initialTransformMatrix={initialTransform}
             // To scale only in X Axis or control the speed of scaling,
             // is necessary handle manually the zoom
-            // with the onWheelEvent and scaling only scaleX
-            wheelDelta={(event) => {
-              hideTooltip();
-
-              if (event.deltaY > 0) {
-                return {
-                  scaleX: 0.6,
-                  scaleY: 1,
-                };
-              } else {
-                return {
-                  scaleX: 1.4,
-                  scaleY: 1,
-                };
-              }
-            }}
+            // with the wheelDelta and scaling only scaleX
+            wheelDelta={handleZoomDelta}
           >
             {(zoom) => {
               return (
@@ -326,7 +328,7 @@ const AreaTest = ({
                         fill="url(#area-accent-gradient)"
                         curve={curveMonotoneX}
                         // Não aplica scale no stroke quando for aplicado zoom
-                        vectorEffect={'non-scaling-stroke'}
+                        vectorEffect="non-scaling-stroke"
                       />
                       <LinePath
                         data={data}
@@ -336,7 +338,7 @@ const AreaTest = ({
                         stroke="#01b3f9"
                         curve={curveMonotoneX}
                         // Não aplica scale no stroke quando for aplicado zoom
-                        vectorEffect={'non-scaling-stroke'}
+                        vectorEffect="non-scaling-stroke"
                       />
                       <Bar
                         x={margin.left}
@@ -344,7 +346,7 @@ const AreaTest = ({
                         width={innerWidth}
                         height={innerHeight}
                         fill="transparent"
-                        rx={24}
+                        rx={12}
                         onTouchStart={(event) =>
                           handleTooltip(event, zoom.transformMatrix)
                         }
@@ -355,11 +357,12 @@ const AreaTest = ({
                           handleTooltip(event, zoom.transformMatrix)
                         }
                         onMouseLeave={() => hideTooltipRef.current()}
+                        // onPointerUp={}
                         onDoubleClick={(event) => {
                           const point = localPoint(event) || { x: 0, y: 0 };
 
                           areaRef.current?.classList.add('animate-path');
-                          zoom.scale({ scaleX: 3, scaleY: 1, point });
+                          zoom.scale({ scaleX: 6, scaleY: 1, point });
                           setTimeout(() => {
                             areaRef.current?.classList.remove('animate-path');
                           }, 300);
@@ -407,14 +410,8 @@ const AreaTest = ({
                         cx={tooltipLeft}
                         cy={tooltipTop}
                         r={6}
-                        fill="#fff"
-                        pointerEvents="none"
-                      />
-                      <circle
-                        cx={tooltipLeft}
-                        cy={tooltipTop}
-                        r={4}
-                        fill="#2b6cb1"
+                        fill="#ffffff"
+                        opacity={0.4}
                         pointerEvents="none"
                       />
                     </Group>

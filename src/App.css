@@ -24,13 +24,21 @@ body,
   box-sizing: border-box;
 }
 
+.bg.light {
+  background-color: #f7faff;
+}
+
 .main-chart {
   width: 1200px;
   min-width: 300px;
   height: 500px;
-  border-radius: 24px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 16px #222222;
+}
+
+.light .main-chart {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .animate-path {

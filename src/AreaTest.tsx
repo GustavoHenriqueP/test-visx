@@ -25,15 +25,15 @@ type LevelChart = [number, number];
 // styles
 const tooltipStyles: React.CSSProperties = {
   ...defaultStyles,
-  backgroundColor: '#0c1629',
-  border: '1px solid #bbb',
-  color: '#fff',
+  backgroundColor: '#f0f3f9',
+  border: '1px solid #2c3e50',
+  color: '#333',
   borderRadius: '6px',
   opacity: '0.8',
   padding: '0.5rem',
 };
 
-const axisColor = '#ddd';
+const axisColor = '#222';
 const axisBottomTickLabelProps = {
   fontSize: 10,
   fill: axisColor,
@@ -276,11 +276,11 @@ const AreaTest = ({
           rx={24}
           fill="url(#area-bg-gradient)"
         />
-        <LinearGradient id="area-bg-gradient" from="#3d4046" to="#363940" />
+        <LinearGradient id="area-bg-gradient" from="#e2e2e6" to="#cbcdd3" />
         <LinearGradient
           id="area-accent-gradient"
-          from="#01b3f9"
-          to="#01b3f9"
+          from="#7ec9f5"
+          to="#7ec9f5"
           fromOpacity={0.4}
           toOpacity={0.2}
         />
@@ -339,7 +339,7 @@ const AreaTest = ({
                       scale={yZoomScale(zoom.transformMatrix)}
                       width={innerWidth}
                       strokeDasharray="1,3"
-                      stroke="#aaa"
+                      stroke="#313131"
                       strokeOpacity={0.2}
                       pointerEvents="none"
                       numTicks={8}
@@ -355,7 +355,7 @@ const AreaTest = ({
                         fill="url(#area-accent-gradient)"
                         curve={curveMonotoneX}
                         // Não aplica scale no stroke quando for aplicado zoom
-                        vectorEffect={'non-scaling-stroke'}
+                        vectorEffect="non-scaling-stroke"
                       />
                       <LinePath
                         data={data}
@@ -365,7 +365,7 @@ const AreaTest = ({
                         stroke="#01b3f9"
                         curve={curveMonotoneX}
                         // Não aplica scale no stroke quando for aplicado zoom
-                        vectorEffect={'non-scaling-stroke'}
+                        vectorEffect="non-scaling-stroke"
                       />
                       <Bar
                         x={margin.left}
@@ -427,7 +427,7 @@ const AreaTest = ({
                       <Line
                         from={{ x: tooltipLeft, y: margin.top }}
                         to={{ x: tooltipLeft, y: innerHeight + margin.top }}
-                        stroke="#44aad6"
+                        stroke="#1e94dd"
                         strokeWidth={1}
                         strokeDasharray="5,2"
                         pointerEvents="none"
@@ -436,14 +436,8 @@ const AreaTest = ({
                         cx={tooltipLeft}
                         cy={tooltipTop}
                         r={6}
-                        fill="#fff"
-                        pointerEvents="none"
-                      />
-                      <circle
-                        cx={tooltipLeft}
-                        cy={tooltipTop}
-                        r={4}
-                        fill="#2b6cb1"
+                        fill="#000"
+                        opacity={0.4}
                         pointerEvents="none"
                       />
                     </Group>
@@ -472,7 +466,7 @@ const AreaTest = ({
             {getYValue(tooltipData) + ' m3'}
           </p>
           <span
-            style={{ fontSize: '0.75rem', color: '#ccc' }}
+            style={{ fontSize: '0.75rem', color: '#444' }}
           >{`${formatDateTooltip(getXValue(tooltipData))}`}</span>
         </TooltipWithBounds>
       )}
