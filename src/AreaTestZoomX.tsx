@@ -211,7 +211,7 @@ const AreaTest = ({
     if (transformMatrix.scaleX <= 1) {
       return initialTransform;
     }
-    if (transformMatrix.scaleX > 12) {
+    if (transformMatrix.scaleX > 64) {
       return prevTransformMatrix;
     }
 
@@ -275,12 +275,12 @@ const AreaTest = ({
 
               if (event.deltaY > 0) {
                 return {
-                  scaleX: 0.8,
+                  scaleX: 0.6,
                   scaleY: 1,
                 };
               } else {
                 return {
-                  scaleX: 1.2,
+                  scaleX: 1.4,
                   scaleY: 1,
                 };
               }
@@ -325,14 +325,18 @@ const AreaTest = ({
                         stroke="#url(#area-accent-gradient)"
                         fill="url(#area-accent-gradient)"
                         curve={curveMonotoneX}
+                        // Não aplica scale no stroke quando for aplicado zoom
+                        vectorEffect={'non-scaling-stroke'}
                       />
                       <LinePath
                         data={data}
                         x={(d) => xScale(getXValue(d)) ?? 0}
                         y={(d) => yScale(getYValue(d)) ?? 0}
-                        strokeWidth={zoom.transformMatrix.scaleX > 1.5 ? 1 : 2}
+                        strokeWidth={2}
                         stroke="#01b3f9"
                         curve={curveMonotoneX}
+                        // Não aplica scale no stroke quando for aplicado zoom
+                        vectorEffect={'non-scaling-stroke'}
                       />
                       <Bar
                         x={margin.left}
@@ -424,8 +428,8 @@ const AreaTest = ({
       {tooltipData && (
         <TooltipWithBounds
           key={Math.random()}
-          top={tooltipTop - 12}
-          left={tooltipLeft + 12}
+          top={tooltipTop - 80}
+          left={tooltipLeft}
           style={tooltipStyles}
         >
           <p

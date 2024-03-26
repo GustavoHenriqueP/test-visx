@@ -354,24 +354,18 @@ const AreaTest = ({
                         stroke="#url(#area-accent-gradient)"
                         fill="url(#area-accent-gradient)"
                         curve={curveMonotoneX}
+                        // Não aplica scale no stroke quando for aplicado zoom
+                        vectorEffect={'non-scaling-stroke'}
                       />
                       <LinePath
                         data={data}
                         x={(d) => xScale(getXValue(d)) ?? 0}
                         y={(d) => yScale(getYValue(d)) ?? 0}
-                        strokeWidth={
-                          zoom.transformMatrix.scaleX > 3
-                            ? 0.25
-                            : zoom.transformMatrix.scaleX > 2.5
-                            ? 0.5
-                            : zoom.transformMatrix.scaleX > 2
-                            ? 1
-                            : zoom.transformMatrix.scaleX > 1.5
-                            ? 1.5
-                            : 2
-                        }
+                        strokeWidth={2}
                         stroke="#01b3f9"
                         curve={curveMonotoneX}
+                        // Não aplica scale no stroke quando for aplicado zoom
+                        vectorEffect={'non-scaling-stroke'}
                       />
                       <Bar
                         x={margin.left}

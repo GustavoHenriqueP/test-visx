@@ -13,8 +13,8 @@ function App() {
       <div className="main-chart">
         <ParentSize debounceTime={100}>
           {({ width, height }) => (
-            <AreaTest width={width} height={height} margin={margin} />
-            // <AreaTestZoomX width={width} height={height} margin={margin} />
+            // <AreaTest width={width} height={height} margin={margin} />
+            <AreaTestZoomX width={width} height={height} margin={margin} />
           )}
         </ParentSize>
       </div>
