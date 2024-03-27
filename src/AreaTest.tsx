@@ -384,6 +384,7 @@ const AreaTest = ({
                           handleTooltip(event, zoom.transformMatrix)
                         }
                         onMouseLeave={() => hideTooltipRef.current()}
+                        onPointerUp={() => console.log(tooltipData)}
                         onDoubleClick={(event) => {
                           const point = localPoint(event) || { x: 0, y: 0 };
 
